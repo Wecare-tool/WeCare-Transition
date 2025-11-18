@@ -1,6 +1,39 @@
 
+
 import React from 'react';
 import { ThemeToggleIcon, SearchIcon, PlusIcon } from './Icons';
+
+interface LanguageSwitcherProps {
+  locale: 'en' | 'vi';
+  setLocale: (locale: 'en' | 'vi') => void;
+}
+
+const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ locale, setLocale }) => {
+  const baseStyle = "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold transition-colors duration-200";
+  const activeStyle = "bg-white dark:bg-wecare-dark-surface-solid shadow-sm text-wecare-text-primary dark:text-wecare-dark-text-primary";
+  const inactiveStyle = "text-wecare-text-secondary dark:text-wecare-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5";
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-wecare-surface dark:bg-wecare-dark-bg rounded-lg border border-wecare-border dark:border-wecare-dark-border">
+      <button
+        onClick={() => setLocale('en')}
+        className={`${baseStyle} ${locale === 'en' ? activeStyle : inactiveStyle}`}
+        aria-pressed={locale === 'en'}
+      >
+        <span role="img" aria-label="US Flag" className="text-lg">🇺🇸</span>
+        EN
+      </button>
+      <button
+        onClick={() => setLocale('vi')}
+        className={`${baseStyle} ${locale === 'vi' ? activeStyle : inactiveStyle}`}
+        aria-pressed={locale === 'vi'}
+      >
+        <span role="img" aria-label="Vietnam Flag" className="text-lg">🇻🇳</span>
+        VI
+      </button>
+    </div>
+  );
+};
 
 interface HeaderProps {
   onSignOut: () => void;
@@ -9,9 +42,11 @@ interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onNewTaskClick: () => void;
+  locale: 'en' | 'vi';
+  setLocale: (locale: 'en' | 'vi') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSignOut, isDarkMode, toggleTheme, searchQuery, setSearchQuery, onNewTaskClick }) => {
+const Header: React.FC<HeaderProps> = ({ onSignOut, isDarkMode, toggleTheme, searchQuery, setSearchQuery, onNewTaskClick, locale, setLocale }) => {
   return (
     <header className="flex h-20 flex-shrink-0 items-center justify-between bg-transparent px-6 md:px-8 border-b border-wecare-border dark:border-wecare-dark-border">
       <div className="flex items-center gap-4">
@@ -34,6 +69,9 @@ const Header: React.FC<HeaderProps> = ({ onSignOut, isDarkMode, toggleTheme, sea
                 aria-label="Search tasks"
             />
         </div>
+
+        <LanguageSwitcher locale={locale} setLocale={setLocale} />
+        
         <button
           onClick={toggleTheme}
           className="p-2 rounded-full text-wecare-text-secondary dark:text-wecare-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 hover:text-wecare-text-primary dark:hover:text-wecare-dark-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-wecare-primary dark:focus:ring-wecare-accent"

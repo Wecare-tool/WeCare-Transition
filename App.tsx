@@ -266,6 +266,7 @@ const App: React.FC = () => {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [locale, setLocale] = useState<'en' | 'vi'>('en');
   
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY }), []);
 
@@ -469,13 +470,43 @@ const App: React.FC = () => {
         }
     };
     
+    const translateAndBackfill = useCallback(async (content: string, rowIndex: number) => {
+      try {
+          const { vn, us } = await translateContent(content);
+          
+          const values = [[vn, us]];
+          const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!F${rowIndex}:G${rowIndex}`;
+          
+          await window.gapi.client.sheets.spreadsheets.values.update({
+              spreadsheetId: GOOGLE_SHEET_SPREADSHEET_ID,
+              range: range,
+              valueInputOption: 'USER_ENTERED',
+              resource: { values },
+          });
+
+          // Refresh data to show the new translations in the UI.
+          // This is a simple and reliable way to sync state after the background job.
+          await fetchSheetData();
+
+      } catch (error) {
+          console.error(`Failed to backfill translations for row ${rowIndex}:`, error);
+          // Optionally, update the sheet to indicate failure
+          const values = [['Translation Failed', 'Translation Failed']];
+          const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!F${rowIndex}:G${rowIndex}`;
+          await window.gapi.client.sheets.spreadsheets.values.update({
+              spreadsheetId: GOOGLE_SHEET_SPREADSHEET_ID,
+              range: range,
+              valueInputOption: 'USER_ENTERED',
+              resource: { values },
+          });
+      }
+    }, [translateContent, fetchSheetData]);
+
     const handleAddDiscussion = async (taskId: string, content: string, type: 'discussion' | 'issue') => {
         if (!content.trim() || !userProfile) return;
 
         const originalDepartments = departments;
         const contentToSave = content.trim();
-
-        const { vn, us } = await translateContent(contentToSave);
 
         const newDiscussion: Discussion = {
             taskId,
@@ -483,8 +514,8 @@ const App: React.FC = () => {
             author: userProfile.name,
             content: contentToSave,
             type,
-            locale_vn: vn,
-            locale_us: us,
+            locale_vn: '',
+            locale_us: '',
             rowIndex: -1 // Temporary index
         };
 
@@ -513,17 +544,28 @@ const App: React.FC = () => {
                 newDiscussion.author, 
                 newDiscussion.content, 
                 capitalizedType,
-                newDiscussion.locale_vn,
-                newDiscussion.locale_us,
+                '', // Post empty locale_vn initially
+                '', // Post empty locale_us initially
             ]];
-            await window.gapi.client.sheets.spreadsheets.values.append({
+            const appendResponse = await window.gapi.client.sheets.spreadsheets.values.append({
                 spreadsheetId: GOOGLE_SHEET_SPREADSHEET_ID,
                 range: GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME,
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: { values },
             });
-            await fetchSheetData();
+            
+            const updatedRange = appendResponse.result.updates.updatedRange;
+            const match = updatedRange.match(/!A(\d+):/);
+            if (match) {
+                const newRowIndex = parseInt(match[1], 10);
+                // Translate and update the sheet in the background, not blocking the UI
+                translateAndBackfill(contentToSave, newRowIndex);
+            } else {
+                // Fallback to a full refresh if we can't get the new row index
+                await fetchSheetData();
+            }
+
         } catch (err: any) {
             console.error("Failed to add discussion:", err);
             setError(`Failed to add discussion: ${err.result?.error?.message || err.message}. Please try again.`);
@@ -533,62 +575,56 @@ const App: React.FC = () => {
 
     const handleUpdateDiscussion = async (updatedDiscussion: Discussion) => {
         const originalDepartments = departments;
-
+        
         const task = departments
             .flatMap(d => d.tasksByStage)
             .flatMap(s => s.tasks)
             .find(t => t.id === updatedDiscussion.taskId);
         
         const originalDiscussion = task?.discussions?.find(d => d.rowIndex === updatedDiscussion.rowIndex);
-        
         const contentChanged = originalDiscussion ? originalDiscussion.content !== updatedDiscussion.content : false;
         
-        let discussionToSave = { ...updatedDiscussion };
-
-        if (contentChanged) {
-            const { vn, us } = await translateContent(updatedDiscussion.content);
-            discussionToSave.locale_vn = vn;
-            discussionToSave.locale_us = us;
-        } else if (originalDiscussion) {
-            discussionToSave.locale_vn = originalDiscussion.locale_vn;
-            discussionToSave.locale_us = originalDiscussion.locale_us;
-        }
-        
+        // Optimistic UI Update: Update the content immediately, keeping old translations temporarily
         const updatedDepartments = departments.map(dept => ({
             ...dept,
             tasksByStage: dept.tasksByStage.map(stage => ({
                 ...stage,
                 tasks: stage.tasks.map(task => 
-                    task.id === discussionToSave.taskId
-                    ? { ...task, discussions: task.discussions?.map(d => d.rowIndex === discussionToSave.rowIndex ? discussionToSave : d).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) }
+                    task.id === updatedDiscussion.taskId
+                    ? { ...task, discussions: task.discussions?.map(d => d.rowIndex === updatedDiscussion.rowIndex ? updatedDiscussion : d).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) }
                     : task
                 )
             }))
         }));
         setDepartments(updatedDepartments);
 
-        if (selectedTask && selectedTask.id === discussionToSave.taskId) {
-            setSelectedTask(prev => prev ? ({ ...prev, discussions: prev.discussions?.map(d => d.rowIndex === discussionToSave.rowIndex ? discussionToSave : d).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) }) : null);
+        if (selectedTask && selectedTask.id === updatedDiscussion.taskId) {
+            setSelectedTask(prev => prev ? ({ ...prev, discussions: prev.discussions?.map(d => d.rowIndex === updatedDiscussion.rowIndex ? updatedDiscussion : d).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) }) : null);
         }
 
         try {
-            const capitalizedType = discussionToSave.type.charAt(0).toUpperCase() + discussionToSave.type.slice(1);
+            const capitalizedType = updatedDiscussion.type.charAt(0).toUpperCase() + updatedDiscussion.type.slice(1);
             const values = [[
-                discussionToSave.taskId,
-                discussionToSave.timestamp,
-                discussionToSave.author,
-                discussionToSave.content,
+                updatedDiscussion.taskId,
+                updatedDiscussion.timestamp,
+                updatedDiscussion.author,
+                updatedDiscussion.content,
                 capitalizedType,
-                discussionToSave.locale_vn,
-                discussionToSave.locale_us,
             ]];
-            const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!A${discussionToSave.rowIndex}:G${discussionToSave.rowIndex}`;
+            // Update only the core content first for a fast response
+            const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!A${updatedDiscussion.rowIndex}:E${updatedDiscussion.rowIndex}`;
             await window.gapi.client.sheets.spreadsheets.values.update({
                 spreadsheetId: GOOGLE_SHEET_SPREADSHEET_ID,
                 range: range,
                 valueInputOption: 'USER_ENTERED',
                 resource: { values },
             });
+            
+            // If content changed, trigger translation in the background
+            if (contentChanged) {
+                translateAndBackfill(updatedDiscussion.content, updatedDiscussion.rowIndex);
+            }
+
         } catch (err: any) {
             console.error("Failed to update discussion:", err);
             setError(`Failed to update discussion: ${err.result?.error?.message || err.message}. Reverting changes.`);
@@ -617,7 +653,7 @@ const App: React.FC = () => {
         }
 
         try {
-            const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!A${discussionToDelete.rowIndex}:E${discussionToDelete.rowIndex}`;
+            const range = `${GOOGLE_SHEET_DISCUSSIONS_TABLE_NAME}!A${discussionToDelete.rowIndex}:G${discussionToDelete.rowIndex}`;
             await window.gapi.client.sheets.spreadsheets.values.clear({
                 spreadsheetId: GOOGLE_SHEET_SPREADSHEET_ID,
                 range: range,
@@ -793,6 +829,8 @@ const App: React.FC = () => {
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
         onNewTaskClick={() => setIsNewTaskModalOpen(true)}
+        locale={locale}
+        setLocale={setLocale}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar sitemap={sitemap} activeView={activeView} setActiveView={setActiveView} />
@@ -812,6 +850,7 @@ const App: React.FC = () => {
             currentUser={userProfile}
             projectMembers={projectMembers}
             departmentColor={departments.find(d => d.name === selectedTask.departmentName)?.color || 'gray'}
+            locale={locale}
         />
       )}
       <NewTaskModal

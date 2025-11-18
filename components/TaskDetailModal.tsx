@@ -20,6 +20,7 @@ interface TaskDetailModalProps {
   onDeleteDiscussion: (discussion: Discussion) => Promise<void>;
   currentUser: { name: string; picture: string } | null;
   projectMembers: ProjectMember[];
+  locale: 'en' | 'vi';
 }
 
 const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -63,10 +64,11 @@ const FormSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (pro
 
 const DiscussionItem: React.FC<{
     discussion: Discussion;
+    displayContent: string;
     onUpdate: (discussion: Discussion) => void;
     onDelete: (discussion: Discussion) => void;
     currentUser: { name: string; picture: string } | null;
-}> = ({ discussion, onUpdate, onDelete, currentUser }) => {
+}> = ({ discussion, displayContent, onUpdate, onDelete, currentUser }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(discussion.content);
@@ -139,7 +141,7 @@ const DiscussionItem: React.FC<{
                 ) : (
                     <div
                         className="prose text-sm max-w-none mt-1 text-wecare-text-primary dark:text-wecare-dark-text-primary"
-                        dangerouslySetInnerHTML={createMarkup(discussion.content)}
+                        dangerouslySetInnerHTML={createMarkup(displayContent)}
                     />
                 )}
             </div>
@@ -166,7 +168,7 @@ const DiscussionItem: React.FC<{
 };
 
 
-const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, departmentColor, onSave, onAddDiscussion, onUpdateDiscussion, onDeleteDiscussion, currentUser, projectMembers }) => {
+const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, departmentColor, onSave, onAddDiscussion, onUpdateDiscussion, onDeleteDiscussion, currentUser, projectMembers, locale }) => {
     const colorClasses = COLOR_MAP[departmentColor] || COLOR_MAP['gray'];
     
     const [editableTask, setEditableTask] = useState<Task>({ ...task });
@@ -435,20 +437,29 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, onClose, depart
 
                 {/* Right Column: Discussions */}
                 <div className="flex-[3] flex flex-col min-h-0 border-l border-wecare-border dark:border-wecare-dark-border pl-8 -ml-4">
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex justify-between items-center">
                         <h3 className="text-xs font-semibold text-wecare-text-secondary dark:text-wecare-dark-text-secondary uppercase tracking-wider">Discussions & Issues</h3>
                     </div>
                     <div className="flex-grow my-4 space-y-2 overflow-y-auto pr-2 -mr-2">
                          {editableTask.discussions && editableTask.discussions.length > 0 ? (
-                            editableTask.discussions.map((d) => (
-                               <DiscussionItem 
-                                    key={`${d.rowIndex}-${d.content.length}`} 
-                                    discussion={d}
-                                    onUpdate={onUpdateDiscussion}
-                                    onDelete={onDeleteDiscussion}
-                                    currentUser={currentUser}
-                                />
-                            ))
+                            editableTask.discussions.map((d) => {
+                                let displayContent = d.content;
+                                if (locale === 'vi' && d.locale_vn && d.locale_vn.trim()) {
+                                    displayContent = d.locale_vn;
+                                } else if (locale === 'en' && d.locale_us && d.locale_us.trim()) {
+                                    displayContent = d.locale_us;
+                                }
+                                return (
+                                   <DiscussionItem 
+                                        key={`${d.rowIndex}-${d.content.length}`} 
+                                        discussion={d}
+                                        displayContent={displayContent}
+                                        onUpdate={onUpdateDiscussion}
+                                        onDelete={onDeleteDiscussion}
+                                        currentUser={currentUser}
+                                    />
+                                );
+                            })
                         ) : (
                             <p className="text-sm text-center py-8 text-wecare-text-secondary dark:text-wecare-dark-text-secondary italic">No discussions yet.</p>
                         )}
