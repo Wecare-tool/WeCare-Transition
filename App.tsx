@@ -266,7 +266,6 @@ const App: React.FC = () => {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [locale, setLocale] = useState<'en' | 'vi'>('en');
   
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY }), []);
 
@@ -829,8 +828,6 @@ const App: React.FC = () => {
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
         onNewTaskClick={() => setIsNewTaskModalOpen(true)}
-        locale={locale}
-        setLocale={setLocale}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar sitemap={sitemap} activeView={activeView} setActiveView={setActiveView} />
@@ -850,7 +847,6 @@ const App: React.FC = () => {
             currentUser={userProfile}
             projectMembers={projectMembers}
             departmentColor={departments.find(d => d.name === selectedTask.departmentName)?.color || 'gray'}
-            locale={locale}
         />
       )}
       <NewTaskModal
