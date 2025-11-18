@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WeCare Transition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              lexend: ['Lexend', 'sans-serif'],
+              sans: ['Roboto', 'sans-serif'],
+            },
+            colors: {
+              // LIGHT THEME (Legacy, for reference)
+              'wecare-primary': '#3492ab',
+              'wecare-primary-hover': '#236E84',
+              'wecare-surface': '#F8F9FA',
+              'wecare-surface-elevated': '#FFFFFF',
+              'wecare-text-primary': '#343A40',
+              'wecare-text-secondary': '#6C757D',
+              'wecare-border': '#E9ECEF',
+              
+              // DARK THEME (New & Improved)
+              'wecare-dark-bg': '#1f2937',
+              'wecare-dark-sidebar': '#111827',
+              'wecare-dark-surface': 'rgba(51, 65, 85, 0.5)', // For glassmorphism
+              'wecare-dark-surface-solid': '#334155',
+              'wecare-dark-header': '#1f2937',
+              'wecare-dark-border': 'rgba(71, 85, 105, 0.6)',
+              'wecare-dark-text-primary': '#e2e8f0',
+              'wecare-dark-text-secondary': '#94a3b8',
+              'wecare-accent': '#22D3EE',
+              'wecare-accent-hover': '#0EA5E9',
+              'wecare-accent-glow': 'rgba(34, 211, 238, 0.15)',
+              'wecare-accent-text': '#0F172A',
+
+              // SHARED STATUS
+              'wecare-success': '#4CAF50',
+              'wecare-warning': '#FFC107',
+              'wecare-danger': '#DC3545',
+
+              // DEPARTMENT COLORS (New)
+              'dept-finance': '#C5E0E8',
+              'dept-procurement': '#7FBACB',
+              'dept-sales': '#3492ab',
+              'dept-warehouse': '#527a89',
+              'dept-technology': '#6C757D',
+            },
+            borderRadius: {
+              'sm': '0.25rem', 'md': '0.5rem', 'lg': '0.75rem', 
+              'xl': '0.75rem', // 12px
+              '2xl': '1rem',   // 16px
+              'full': '9999px',
+            },
+            boxShadow: {
+              'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+              'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+              'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+              'glow-accent': '0 0 20px 0 rgba(34, 211, 238, 0.15)',
+            },
+            spacing: {
+              '1': '0.25rem', '2': '0.5rem', '3': '0.75rem', '4': '1rem', '5': '1.25rem',
+              '6': '1.5rem', '8': '2rem', '10': '2.5rem', '12': '3rem'
+            },
+            transitionTimingFunction: {
+              'standard': 'cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            transitionDuration: {
+              '200': '200ms',
+              '300': '300ms',
+            }
+          }
+        }
+      }
+    </script>
+    <style type="text/tailwindcss">
+      h1, h2, h3, h4, h5, h6 {
+        @apply font-lexend font-bold tracking-tight;
+      }
+      body {
+        @apply font-sans antialiased;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        @apply bg-wecare-surface dark:bg-wecare-dark-bg;
+      }
+      ::-webkit-scrollbar-thumb {
+        @apply bg-wecare-border dark:bg-wecare-dark-border rounded-full;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        @apply bg-wecare-text-secondary dark:bg-wecare-dark-text-secondary;
+      }
+      /* Custom Prose styles for Markdown */
+      .prose ul { @apply list-disc list-outside pl-5 my-2 text-wecare-text-primary dark:text-wecare-dark-text-primary; }
+      .prose ol { @apply list-decimal list-outside pl-5 my-2 text-wecare-text-primary dark:text-wecare-dark-text-primary; }
+      .prose ul ul { list-style-type: circle; @apply my-0 ml-4; }
+      .prose ul ul ul { list-style-type: square; }
+      .prose ol ol { list-style-type: lower-alpha; @apply my-0 ml-4; }
+      .prose ol ol ol { list-style-type: lower-roman; }
+      .prose li { @apply mb-1; }
+      .prose strong { @apply font-bold text-wecare-text-primary dark:text-wecare-dark-text-primary; }
+      .prose em { @apply italic; }
+      .prose a { @apply text-wecare-primary dark:text-wecare-accent underline hover:opacity-80; }
+      .prose code { @apply bg-wecare-border dark:bg-wecare-dark-surface-solid px-1.5 py-1 rounded-md text-sm font-mono; }
+      .prose p { @apply my-2; }
+      .prose blockquote { @apply border-l-4 border-wecare-border dark:border-wecare-dark-border pl-4 italic text-wecare-text-secondary dark:text-wecare-dark-text-secondary; }
+
+      /* EasyMDE Custom Theming */
+      .editor-toolbar {
+        @apply border-wecare-border;
+      }
+      .editor-toolbar button {
+        @apply text-wecare-primary;
+      }
+      .editor-toolbar button:hover, .editor-toolbar button.active {
+        @apply bg-wecare-primary/10 text-wecare-primary;
+      }
+      .CodeMirror {
+        @apply border-wecare-border text-wecare-text-primary bg-wecare-surface;
+      }
+      .dark .editor-toolbar {
+        @apply bg-wecare-dark-surface-solid border-wecare-dark-border;
+      }
+      .dark .editor-toolbar button {
+        @apply text-wecare-accent;
+      }
+      .dark .editor-toolbar button:hover, .dark .editor-toolbar button.active {
+        @apply bg-wecare-accent/10 text-wecare-accent;
+      }
+      .dark .CodeMirror {
+        @apply bg-wecare-dark-bg text-wecare-dark-text-primary border-wecare-dark-border;
+      }
+      .dark .CodeMirror-cursor {
+        @apply border-wecare-dark-text-primary;
+      }
+      .dark .editor-preview, .dark .editor-preview-side {
+        @apply bg-wecare-dark-bg;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" defer></script>
+</head>
+<body class="bg-wecare-surface dark:bg-wecare-dark-bg text-wecare-text-primary dark:text-wecare-dark-text-primary transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
