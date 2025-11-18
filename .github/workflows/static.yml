@@ -1,5 +1,3 @@
-#.github/workflows/static.yml
-
 name: Deploy Static Site
 on:
   push:
